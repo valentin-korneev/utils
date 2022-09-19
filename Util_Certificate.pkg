@@ -1,0 +1,34 @@
+prompt create or replace package Util_Certificate
+
+create or replace package Util_Certificate
+as
+
+type TFile is record ( filename varchar2(200)
+                     , content  blob := empty_blob()
+                     );
+                     
+CMD_WITHOUT_SIGN constant int := null;
+CMD_MANUAL_SIGN  constant int := 1;
+CMD_AUTO_SIGN    constant int := 2;
+
+---------
+function GetServerUrl(aServerId int) return varchar2;
+
+---------
+procedure UpdateCertByFtp   (aServerId int);
+procedure UpdateCrlByFtp    (aServerId int);
+procedure UpdateCertCrlByFtp(aServerId int);
+procedure UpdateCertificate(aServerId int, aType varchar2);
+
+---------
+procedure SignData  (aServerId int, aFileReq TFile, aFileResp out TFile, aDocType int := null, aDocId int := null);
+procedure VerifyData(aServerId int, aFileReq TFile, aFileResp out TFile, aDocType int := null, aDocId int := null);
+
+---------
+function CertificateTypes return Util.RefCursor;
+function UseSignCmds      return Util.RefCursor;
+function Certificates     return Util.RefCursor;
+
+---------
+end Util_Certificate;
+/

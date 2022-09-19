@@ -1,0 +1,379 @@
+
+prompt create or replace package xml_Util
+
+create or replace package xml_Util
+as
+
+XML_HEADER                      constant varchar2(100) := '<?xml version="1.0" encoding="windows-1251" ?>' || chr(10);
+XML_HEADER_UTF8                 constant varchar2(100) := '<?xml version="1.0" encoding="utf-8" ?>' || chr(10);
+
+gMaxXmlValueLength              constant int := 500;
+
+FMT_DATE                        constant varchar2(17) := 'yyyymmddhh24miss';
+FMT_STD_DATE_TIME               constant varchar2(23) := 'yyyy-mm-dd"T"hh24:mi:ss';
+FMT_XS_DATE                     constant varchar2(23) := 'yyyy-mm-dd';
+FMT_XS_TIME                     constant varchar2(23) := 'hh24:mi:ss';
+FMT_DATE_ISO8601                constant varchar2(34) := 'yyyy-mm-dd"T"hh24:mi:ss.ffTZH:TZM';
+
+NLS_NUM_CHAR                    constant varchar2(30) := 'nls_numeric_characters='', ''';
+
+EndLine                         constant varchar2(5) := chr(10);
+
+CDATA_OPEN                      constant varchar2(30) := '<![CDATA[';
+CDATA_CLOSE                     constant varchar2(30) := ']]>';
+
+eFailedXML                      exception; pragma exception_init(eFailedXML,      -31011);
+eXmlNodeOver64K                 exception; pragma exception_init(eXmlNodeOver64K, -31167);
+
+--==============================================================================================================================
+
+---------
+function CreateAttr(aAttrName varchar2, aAttrVal varchar2, aDefVal varchar2 := null, aEncoding boolean := true, aMandatory boolean := false) return varchar2;
+function CreateAttr(aAttrName varchar2, aAttrVal boolean,  aDefVal boolean := null                                                         ) return varchar2;
+function CreateAttr(aAttrName varchar2, aAttrVal date,     aFormat varchar2                                                                ) return varchar2;
+function CreateAttr(aAttrName varchar2, aAttrVal number,   aDefVal number := null                                                          ) return varchar2;
+
+---------
+function OpenElement
+( aElementName varchar2
+, aElementAttr varchar2 := null
+, aIndentCount int := 0
+, aLeftBR boolean := true
+, aPreserveWhitespaces boolean := false
+, aClose boolean := false
+) return varchar2;
+
+function CloseElement
+( aElementName varchar2
+, aIndentCount int := 0
+, aLeftBR boolean := true
+) return varchar2;
+
+---------
+function Element
+( aElementName          varchar2
+, aElementVal           varchar2 := null
+, aElementAttr          varchar2 := null
+, aIndentCount          int := 0
+, aLeftBR               boolean := true
+, aEncoding             boolean := true
+, aPreserveWhitespaces  boolean := false
+, aMandatory            boolean := true
+, aCloseOnNewLine       boolean := false
+) return varchar2;
+
+---------
+function Element
+( aElementName          varchar2
+, aElementVal           date
+, aFormat               varchar2
+, aElementAttr          varchar2 := null
+, aIndentCount          int := 0
+, aLeftBR               boolean := true
+, aMandatory            boolean := true
+) return varchar2;
+
+---------
+function Element
+( aElementName          varchar2
+, aElementVal           boolean
+, aElementAttr          varchar2 := null
+, aIndentCount          int := 0
+, aLeftBR               boolean := true
+, aMandatory            boolean := true
+, aDefault              boolean := null
+) return varchar2;
+
+---------
+procedure AddElementToBuff
+( aBuff in out nocopy varchar2
+, aElementName varchar2
+, aElementVal varchar2 := null
+, aElementAttr varchar2 := null
+, aIndentCount int := 0
+, aLeftBR boolean := true
+, aEncoding boolean := true
+, aPreserveWhitespaces boolean := false
+);
+
+--==============================================================================================================================
+
+function GetValueS
+( aValue varchar2
+, aValueName varchar2
+, aMaxLen int := 100
+, aMinLen int := 0
+, aConst varchar2 := null
+, aMandatory boolean := true
+, aConstList tp_varchar2_100_table := null
+, aDefault varchar2 := null
+, aValidChars varchar2 := null
+, aHomographToLatin boolean := false
+, aTrim boolean := true
+) return varchar2;
+---------
+function GetValueS
+( aXML XMLType
+, aElementPath varchar2
+, aAttrName varchar2 := ''
+, aMaxLen int := 100
+, aIndexOrPredicate varchar2 := '1'
+, aMinLen int := 0
+, aConst varchar2 := null
+, aMandatory boolean := true
+, aDecoding boolean := true
+, aConstList tp_varchar2_100_table := null
+, aNamespace varchar2 := null
+, aDefault varchar2 := null
+, aValidChars varchar2 := null
+, aHomographToLatin boolean := false
+, aTrim boolean := null
+) return varchar2;
+
+---------
+function GetValueN
+( aValue        varchar2
+, aValueName    varchar2
+, aMaxLen       int := 38
+, aMinLen       int := 0
+, aConst        number := null
+, aMandatory    boolean := true
+, aMinNumValue  number := null
+, aMaxNumValue  number := null
+, aPositive     boolean := true
+, aFormat       varchar2 := null
+, aConstList    tp_num_table := null
+, aDefault      number := null
+) return number;
+---------
+function GetValueN
+( aXML XMLType
+, aElementPath      varchar2
+, aAttrName         varchar2 := ''
+, aMaxLen           int := 38
+, aIndexOrPredicate varchar2 := '1'
+, aMinLen           int := 0
+, aConst            number := null
+, aMandatory        boolean := true
+, aMinNumValue      number := null
+, aMaxNumValue      number := null
+, aPositive         boolean := true
+, aFormat           varchar2 := null
+, aConstList        tp_num_table := null
+, aNamespace        varchar2 := null
+, aDefault          number := null
+) return number;
+
+---------
+function GetValueD
+( aValue        varchar2
+, aValueName    varchar2
+, aMaxLen       int           := 30
+, aMinLen       int           := 0
+, aConst        date          := null
+, aMandatory    boolean       := true
+, aFormat       varchar2      := FMT_DATE
+, aConstList    tp_date_table := null
+, aDefault      date          := null
+, aMinDateValue date          := null
+, aMaxDateValue date          := null
+) return date;
+---------
+function GetValueD
+( aXML              XMLType
+, aElementPath      varchar2
+, aAttrName         varchar2      := ''
+, aMaxLen           int           := 30
+, aIndexOrPredicate varchar2      := '1'
+, aMinLen           int           := 0
+, aConst            date          := null
+, aMandatory        boolean       := true
+, aFormat           varchar2      := FMT_DATE
+, aDecoding         boolean       := false
+, aConstList        tp_date_table := null
+, aNamespace        varchar2      := null
+, aDefault          date          := null
+, aMinDateValue     date          := null
+, aMaxDateValue     date          := null
+) return date;
+
+---------
+function GetValueT
+( aValue            varchar2
+, aValueName        varchar2
+, aMandatory        boolean       := true
+, aDefault          timestamp     := null
+) return timestamp;
+
+---------
+function GetValueT
+( aXML              XMLType
+, aElementPath      varchar2
+, aAttrName         varchar2      := ''
+, aIndexOrPredicate varchar2      := '1'
+, aMandatory        boolean       := true
+, aNamespace        varchar2      := null
+, aDefault          timestamp     := null
+) return timestamp;
+
+---------
+function GetValueB
+( aValue varchar2
+, aValueName varchar2
+, aMandatory boolean := true
+, aDefault boolean := null
+) return boolean;
+---------
+function GetValueB
+( aXML XMLType
+, aElementPath varchar2
+, aAttrName varchar2 := ''
+, aIndexOrPredicate varchar2 := '1'
+, aMandatory boolean := true
+, aNamespace varchar2 := null
+, aDefault boolean := null
+) return boolean;
+
+---------
+function GetValueF
+( aValue            varchar2
+, aValueName        varchar2
+, aMandatory        boolean := true
+, aDefault          number := null
+, aMinNumValue      number := null
+, aMaxNumValue      number := null
+, aPositive         boolean := false
+) return number;
+---------
+function GetValueF
+( aXML              XMLType
+, aElementPath      varchar2
+, aAttrName         varchar2 := ''
+, aIndexOrPredicate varchar2 := '1'
+, aMandatory        boolean := true
+, aNamespace        varchar2 := null
+, aDefault          number := null
+, aMinNumValue      number := null
+, aMaxNumValue      number := null
+, aPositive         boolean := false
+) return number;
+
+---------
+function GetValueC
+( aXML              XMLType
+, aElementPath      varchar2
+, aIndexOrPredicate varchar2 := '1'
+, aMandatory        boolean := true
+, aNamespace        varchar2 := null
+) return clob;
+
+--========================================================================================
+
+---------
+procedure TestParam
+( aValue in out varchar2
+, aType varchar2  := 'S'
+, aValueName varchar2
+, aMaxLen int := gMaxXmlValueLength
+, aMinLen int := 0
+, aConst varchar2 := null
+, aMandatory boolean := true
+, aMinNumValue int := null
+, aMaxNumValue int := null
+, aPositive boolean := true
+, aFormat varchar2 := null
+, aConstList tp_varchar2_100_table := null
+, aDefault varchar2 := null
+, aValidChars varchar2 := null
+, aHomographToLatin boolean := false
+);
+---------
+function StrToNum(aValue varchar2, aFormat in varchar2, aValueName varchar2 := null) return number;
+function StrToDate(aValue varchar2, aFormat in varchar2, aValueName varchar2 := null) return date;
+
+---------
+function EncodeXML(aValue varchar2) return varchar2;
+function DecodeXML(aValue varchar2) return varchar2;
+
+---------
+function SerializeXML(aXML xmltype) return clob;
+
+--==============================================================================================================================
+
+---------
+procedure FirstLevelSignature
+( aMsg in out nocopy XMLType
+, aSignatureTagName varchar2 := 'Signature'
+, aSalt varchar2 := null
+, aCheck boolean := true
+, aSeparator varchar2 := '^'
+);
+
+--==============================================================================================================================
+
+--!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+--!!  Устаревшие
+--!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+---------
+function GetElementAttrValue
+( aXML XMLType
+, aElementPath varchar2
+, aAttrName varchar2
+, aMaxLen int := 100
+, aIdx varchar2 := '1'
+, aType varchar2 := 'S'
+, aMinLen int := 0
+, aConst varchar2 := null
+, aMandatory boolean := true
+, aMinNumValue int := null
+, aMaxNumValue int := null
+, aPositive boolean := true
+, aFormat varchar2 := null
+, aDecoding boolean := true
+, aConstList tp_varchar2_100_table := null
+, aNamespace varchar2 := null
+, aDefault varchar2 := null
+, aValidChars varchar2 := null
+, aHomographToLatin boolean := false
+) return varchar2;
+
+---------
+function GetElementValue
+( aXML XMLType
+, aElementPath varchar2
+, aMaxLen int := gMaxXmlValueLength
+, aIdx varchar2 := '1'
+, aType varchar2 := 'S'
+, aMinLen int := 0
+, aConst varchar2 := null
+, aMandatory boolean := true
+, aMinNumValue int := null
+, aMaxNumValue int := null
+, aPositive boolean := true
+, aFormat varchar2 := null
+, aDecoding boolean := true
+, aConstList tp_varchar2_100_table := null
+, aNamespace varchar2 := null
+, aDefault varchar2 := null
+, aValidChars varchar2 := null
+, aHomographToLatin boolean := false
+) return varchar2;
+
+function GetElementValueD
+( aXML XMLType
+, aElementPath varchar2
+, aMaxLen int := gMaxXmlValueLength
+, aIdx varchar2 := '1'
+, aMinLen int := 0
+, aConst varchar2 := null
+, aMandatory boolean := true
+, aFormat varchar2 := null
+, aDecoding boolean := false
+, aNamespace varchar2 := null
+) return date;
+
+---------
+end xml_Util;
+/
+show error

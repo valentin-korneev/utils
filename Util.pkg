@@ -1,0 +1,704 @@
+prompt create or replace package Util
+
+create or replace package Util
+as
+
+eStandardException              exception; pragma exception_init(eStandardException,           -20000);
+
+eLargeValue                     exception; pragma exception_init(eLargeValue,                   -1438);
+eNullOnInsert                   exception; pragma exception_init(eNullOnInsert,                 -1400);
+eCheckConstraintViolated        exception; pragma exception_init(eCheckConstraintViolated,      -2290);
+eParentKeyNotFound              exception; pragma exception_init(eParentKeyNotFound,            -2291);
+eChildRecordFound               exception; pragma exception_init(eChildRecordFound,             -2292);
+
+ePlSqlCompilationError          exception; pragma exception_init(ePlSqlCompilationError,        -6550);
+eSuccessWithCompilationError    exception; pragma exception_init(eSuccessWithCompilationError, -24344);
+eTableDoesNotExists             exception; pragma exception_init(eTableDoesNotExists,            -942);
+
+eErrorsInArrayDML               exception; pragma exception_init(eErrorsInArrayDML,            -24381);
+eResourceIsBusy                 exception; pragma exception_init(eResourceIsBusy,                 -54);
+eResourceIsBusyAndTimedOut      exception; pragma exception_init(eResourceIsBusyAndTimedOut,   -30006);
+
+eConnectByLoop                  exception; pragma exception_init(eConnectByLoop,                -1436);
+
+eTableIsMutating                exception; pragma exception_init(eTableIsMutating,              -4091);
+
+ERROR_CLASS_ABORT               constant int := 0;
+
+------------------------------------------------------------------------------------------
+
+subtype RefCursor               is sys_refcursor;
+
+type TInts                      is table of int;
+type TInts2D                    is table of TInts;
+type TNums                      is table of number;
+type TNums2D                    is table of TNums;
+type TStrs                      is table of varchar2(32767);
+type TStrs2D                    is table of TStrs;
+type TDates                     is table of date;
+type TDates2D                   is table of TDates;
+type TBools                     is table of boolean;
+type TRowids                    is table of rowid;
+
+type TIntArr                    is table of int             index by pls_integer;
+type TNumArr                    is table of number          index by pls_integer;
+type TStrArr                    is table of varchar2(32767) index by pls_integer;
+type TDateArr                   is table of date            index by pls_integer;
+type TBoolArr                   is table of boolean         index by pls_integer;
+type TRowidArr                  is table of rowid           index by pls_integer;
+
+type TIntArrByS30               is table of int             index by varchar2(30);
+type TNumArrByS30               is table of number          index by varchar2(30);
+type TStrArrByS30               is table of varchar2(32767) index by varchar2(30);
+type TDateArrByS30              is table of date            index by varchar2(30);
+type TBoolArrByS30              is table of boolean         index by varchar2(30);
+
+type TIntArrByS100              is table of int             index by varchar2(100);
+type TNumArrByS100              is table of number          index by varchar2(100);
+type TStrArrByS100              is table of varchar2(32767) index by varchar2(100);
+type TDateArrByS100             is table of date            index by varchar2(100);
+type TBoolArrByS100             is table of boolean         index by varchar2(100);
+
+type TIntArrByS2000             is table of int             index by varchar2(2000);
+type TNumArrByS2000             is table of number          index by varchar2(2000);
+type TStrArrByS2000             is table of varchar2(32767) index by varchar2(2000);
+type TDateArrByS2000            is table of date            index by varchar2(2000);
+type TBoolArrByS2000            is table of boolean         index by varchar2(2000);
+
+------------------------------------------------------------------------------------------
+
+YES                             constant varchar2(1) := 'Y';
+NO                              constant varchar2(1) := 'N';
+
+------------------------------------------------------------------------------------------
+
+CHAR_UPPER_LATIN                constant varchar2(100) := 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+CHAR_UPPER_CYRILLIC             constant varchar2(100) := 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЫЬЪЭЮЯ' || 'Ў' || 'І'/* i-белорусское */;
+CHAR_UPPER                      constant varchar2(100) := CHAR_UPPER_LATIN || CHAR_UPPER_CYRILLIC;
+CHAR_LOWER_LATIN                constant varchar2(100) := lower(CHAR_UPPER_LATIN);
+CHAR_LOWER_CYRILLIC             constant varchar2(100) := lower(CHAR_UPPER_CYRILLIC);
+CHAR_LOWER                      constant varchar2(100) := CHAR_LOWER_LATIN || CHAR_LOWER_CYRILLIC;
+CHAR_LATIN                      constant varchar2(100) := CHAR_UPPER_LATIN || CHAR_LOWER_LATIN;
+CHAR_CYRILLIC                   constant varchar2(100) := CHAR_UPPER_CYRILLIC || CHAR_LOWER_CYRILLIC;
+CHAR_LETTER                     constant varchar2(200) := CHAR_LATIN || CHAR_CYRILLIC;
+CHAR_DIGIT                      constant varchar2(100) := '0123456789';
+CHAR_HEX_ALPHA_LOWER            constant varchar2(100) := 'abcdef';
+CHAR_HEX_ALPHA_UPPER            constant varchar2(100) := upper(CHAR_HEX_ALPHA_LOWER);
+CHAR_HEX                        constant varchar2(100) := CHAR_DIGIT || CHAR_HEX_ALPHA_UPPER || CHAR_HEX_ALPHA_LOWER;
+CHAR_HEX_UPPER                  constant varchar2(100) := CHAR_DIGIT || CHAR_HEX_ALPHA_UPPER;
+CHAR_SYMBOL                     constant varchar2(100) := ' !"#$%&''()*+,-./:;<=>?@[\]^_`{|}~№';
+CHAR_ALL                        constant varchar2(999) := CHAR_UPPER || CHAR_LOWER || CHAR_DIGIT || CHAR_SYMBOL;
+
+CR                              constant varchar2(1) := chr(13);
+LF                              constant varchar2(1) := chr(10);
+CRLF                            constant varchar2(2) := CR || LF;
+
+------------------------------------------------------------------------------------------
+
+COLOR_Black                     constant varchar2(6) := '000000';
+COLOR_BlackLight                constant varchar2(6) := '404040';
+COLOR_GrayDark                  constant varchar2(6) := COLOR_BlackLight;
+COLOR_Gray                      constant varchar2(6) := '808080';
+COLOR_GrayLight                 constant varchar2(6) := 'C0C0C0';
+COLOR_Maroon                    constant varchar2(6) := '000080';
+COLOR_MaroonLight               constant varchar2(6) := '4040C0';
+COLOR_Red                       constant varchar2(6) := '0000FF';
+COLOR_RedLight                  constant varchar2(6) := '8080FF';
+COLOR_Brown                     constant varchar2(6) := '004080';
+COLOR_BrownLight                constant varchar2(6) := '4080C0';
+COLOR_Orange                    constant varchar2(6) := '0080FF';
+COLOR_OrangeLight               constant varchar2(6) := '80C0FF';
+COLOR_Olive                     constant varchar2(6) := '008080';
+COLOR_OliveLight                constant varchar2(6) := '40C0C0';
+COLOR_Yellow                    constant varchar2(6) := '00FFFF';
+COLOR_YellowLight               constant varchar2(6) := 'C0FFFF';
+COLOR_Green                     constant varchar2(6) := '008000';
+COLOR_GreenLight                constant varchar2(6) := '40C040';
+COLOR_Lime                      constant varchar2(6) := '00FF00';
+COLOR_LimeLight                 constant varchar2(6) := '80FF80';
+COLOR_Teal                      constant varchar2(6) := '808000';
+COLOR_TealLight                 constant varchar2(6) := 'C0C040';
+COLOR_Cyan                      constant varchar2(6) := 'FFFF00';
+COLOR_CyanLight                 constant varchar2(6) := 'FFFF80';
+COLOR_Navy                      constant varchar2(6) := '800000';
+COLOR_NavyLight                 constant varchar2(6) := 'C04040';
+COLOR_Blue                      constant varchar2(6) := 'FF0000';
+COLOR_BlueLight                 constant varchar2(6) := 'FF8080';
+COLOR_Purple                    constant varchar2(6) := '800080';
+COLOR_PurpleLight               constant varchar2(6) := 'C040C0';
+COLOR_Magenta                   constant varchar2(6) := 'FF00FF';
+COLOR_MagentaLight              constant varchar2(6) := 'FF80FF';
+COLOR_White                     constant varchar2(6) := 'FFFFFF';
+COLOR_Transparent               constant varchar2(6) := 'FFFFFE';
+
+------------------------------------------------------------------------------
+
+
+------------
+-- Cutoff - усечение строки aStr до длины aLength с заменой отсечённой части символом aEllipsicChar
+---------
+function Cutoff(aStr varchar2, aLength pls_integer, aEllipsicChar char := '…') return varchar2;
+
+------------
+-- Trim - отсечение символов aTrimChars и слева, и справа строки aStr
+---------
+function Trim(aStr varchar2, aTrimChars varchar2 := ' ') return varchar2;
+
+------------
+-- UpperFirst - преобразование первой буквы строки в прописную
+---------
+function UpperFirst(aStr varchar2) return varchar2;
+
+---------
+function DBCharset return varchar2;
+function IsMultiByteDB return boolean;
+function FixCharset(aStr varchar2) return varchar2; -- Исправление кодировки, когда в UTF-8 лежит Win1251 для избежания ORA-29275 на мультибайтовой базе (клиент c Charset = UTF-8).
+
+---------
+function TStrs2TInts(aStrs TStrs) return TInts;
+function TInts2TStrs(aInts TInts) return TStrs;
+---------
+function TInts2TpIntTable(aInts TInts) return tp_int_table;
+function TpIntTable2TInts(aInts tp_int_table) return TInts;
+
+---------
+function Reverse(aStrs TStrs) return TStrs;
+
+
+---------
+function IndexOf(aStrs   TStrs,   aValue varchar2) return pls_integer;
+function IndexOf(aInts   TInts,   aValue int     ) return pls_integer;
+function IndexOf(aStrArr TStrArr, aValue varchar2) return pls_integer;
+function IndexOf(aIntArr TIntArr, aValue int     ) return pls_integer;
+
+
+------------------------------------------------------------------------------------------
+-- Occurences - возвращает сколько раз встречается в строке Str строка SubStr
+---------
+function Occurences(SubStr varchar2, Str varchar2) return pls_integer;
+
+------------------------------------------------------------------------------------------
+-- SubName - возвращает Ind-ый элемент строки Name
+--   элементы разделяются символом '|' (напр., 'эл1|эл2|эл3|эл4')
+---------
+function SubName(Name varchar2, Ind pls_integer, Separator varchar2 := '|') return varchar2;
+
+------------------------------------------------------------------------------------------
+-- SubNameCount - возвращает количество строк в строке Name
+--  (строки разделяются символом '|')
+---------
+function SubNameCount(Name varchar2, Separator varchar2 := '|') return pls_integer;
+
+------------------------------------------------------------------------------------------
+-- SubNameIndex - ищет подстроку SubStr в строках Name (строки разделяются символом '|')
+--   и возвращает индекс подстроки (при неуспешном поиске возвращается 0)
+---------
+function SubNameIndex(SubStr varchar2, Name varchar2, Separator varchar2 := '|') return pls_integer;
+
+------------------------------------------------------------------------------------------
+-- SubNameExists - определяем наличие подстроки SubStr в строках Name
+--  (строки разделяются символом '|')
+---------
+function SubNameExists(SubStr varchar2, Name varchar2, Separator varchar2 := '|') return boolean;
+
+
+---------
+function SubNames2TStrs(Name varchar2, Separator varchar2 := '|') return TStrs;
+function TStrs2SubNames(aStrs TStrs,   Separator varchar2 := '|') return varchar2;
+---------
+function SubNameReverse(Name varchar2, Separator varchar2 := '|') return varchar2;
+---------
+function SubNames2TpVarchar4000Table(Name varchar2, Separator varchar2 := '|') return tp_varchar2_4000_table;
+
+
+---------
+function TStrs2TpVarchar4000Table(aStrs TStrs) return tp_varchar2_4000_table;
+function TpVarchar4000Table2TStrs(aStrs tp_varchar2_4000_table) return TStrs;
+---------
+function TStrs2TStrs2D(aStrs TStrs, aSubItemCount pls_integer := 2) return TStrs2D;
+---------
+function  TStrArr2Clob(aStrArr TStrArr, aAddCR boolean := true) return clob;
+procedure TStrArr2Clob(aStrArr TStrArr, aClob in out nocopy clob, aAddCR boolean := true);
+
+---------
+procedure Clob2TStrArr(aClob clob, aStrArr in out nocopy TStrArr);
+function  Clob2TStrArr(aClob clob) return TStrArr;
+function  Clob2TpVarchar4000Table(aClob clob, aIgnoreNullLines varchar2 := 'Y') return tp_varchar2_4000_table;
+function  Clob2TpNumTable(aClob clob, aIgnoreNullLines varchar2 := 'Y', aIgnoreNumErr varchar2 := 'Y') return tp_num_table;
+
+---------
+function Interval2Sec(aInterval dsinterval_unconstrained) return number;
+
+---------
+function Num2Str(aValue number) return varchar2;
+function Str2Num(aValue varchar2) return number;
+
+---------
+function DMY   (aDate date) return varchar2; -- dd.mm.yyyy
+function DMYHMS(aDate date) return varchar2; -- dd.mm.yyyy hh24:mi:ss
+function DMY2Date   (aString varchar2) return date;
+function DMYHMS2Date(aString varchar2) return date;
+
+---------
+function BOOL        (aBoolean boolean ) return varchar2; -- true/false/null=>Y/N/?
+function BOOL2Boolean(aBOOL    varchar2) return boolean;  -- Y/N/?=>true/false/null
+
+
+------------------------------------------------------------------------------------------
+-- Format - форматирование строки (аналогично printf в C или Format в Delphi)
+---
+-- Входные параметры:
+--   FormatStr - форматируемая строка
+--     Допустимый формат:  "%" ["-"] [width] ["." prec] type
+--     где "%" - начало спецификации формата;
+--         "-" - выравнивание влево;
+--         width - минимальная ширина значения;
+--         prec - точность значения (см. type);
+--         type - тип значения. Возможные типы:
+--                s - строка (prec означает максимальную длину строки);
+--                d - число (prec означает минимальное количество десятичных цифр)
+--                      в качестве десятичного разделителя используется запятая
+--                x - целое число в шестнадцатеричном виде
+--                      (prec означает минимальное количество шестнадцатеричных цифр)
+--                i - interval (day to second) без незначащих лидирующих нулей
+--                      (prec означает количество цифр после запятой)
+--                D - дата в формате, "влезающем" во width
+--                      (dd.mm.yyyy - по умолчанию, dd.mm.yy, mm.yyyy, mm.yy, yyyy, yy)
+--   Args - аргументы форматирования
+---
+-- Пример:
+--   Util.Format('Абонент %-10.8d: Ошибка 0x%x "%s"', Util.TStrs(5999001, 132, 'Unknown MTI'))
+--     => 'Абонент 05999001  : Ошибка 0x84 "Unknown MTI"'
+---------
+function  Format(FormatStr          varchar2,  Args TStrs) return varchar2;
+procedure Format(aStr in out nocopy varchar2, aArgs TStrs);
+---------
+function Format(FormatStr varchar2, S1 varchar2,
+  S2 varchar2 := '', S3 varchar2 := '', S4 varchar2 := '',
+  S5 varchar2 := '', S6 varchar2 := '', S7 varchar2 := '',
+  S8 varchar2 := '', S9 varchar2 := '', S10 varchar2 := ''
+) return varchar2;
+
+------------------------------------------------------------------------------------------
+-- ReplaceMacros - замена макросов в строке
+---
+-- Входные параметры:
+--   aStr - исходная строка
+--   aMacros - перечень макросов (пары 'что искать', 'на что заменять')
+---------
+procedure ReplaceMacros(aStr in out nocopy varchar2, aMacros TStrs);
+function  ReplaceMacros(aStr               varchar2, aMacros TStrs) return varchar2;
+procedure ReplaceMacros(aStr in out nocopy clob,     aMacros TStrs);
+function  ReplaceMacros(aStr               clob,     aMacros TStrs) return clob;
+procedure ReplaceMacros(aStr in out nocopy clob,     aMacros tp_clob_table);
+function  ReplaceMacros(aStr               clob,     aMacros tp_clob_table) return clob;
+
+------------------------------------------------------------------------------------------
+-- ReplaceOptionalMacros - замена макросов в строке с удалением необязательных частей
+--   Необязательная часть удаляется, если все упомянутые внутри неё макросы оказываются пустыми
+---
+-- Входные параметры:
+--   aStr - исходная строка
+--   aMacros - перечень макросов (пары 'что искать', 'на что заменять')
+--   aBracketChars - пара символов, ограничивающая необязательную часть строки. Из результата удаляются
+---
+-- Пример:
+--   Util.ReplaceOptionalMacros('Загружено записей: %CNT%{, из них с ошибками: %ERRORS%}'
+--   , Util.TStrs('%CNT%', 50, '%ERRORS%', nullif(0, 0)))
+--     => 'Загружено записей: 50'
+---------
+procedure ReplaceOptionalMacros(aStr in out nocopy varchar2, aMacros TStrs, aBracketChars varchar2 := '{}');
+function ReplaceOptionalMacros(aStr varchar2, aMacros TStrs, aBracketChars varchar2 := '{}') return varchar2;
+
+------------------------------------------------------------------------------------------
+-- SelectCountNounForm - выбор формы исчисляемого существительного в зависимости от числа
+---
+-- Входные параметры:
+--   aValue         - целое число
+--   aCountNounForm - формы исчисляемого существительного,
+--                      которое можно дописать к значению числа, в виде
+--                      'им.пад.ед.ч|род.пад.ед.ч|род.пад.мн.ч',
+--                        где им.пад.ед.ч  - форма именительного падежа единственного числа
+--                            род.пад.ед.ч - форма родительного падежа единственного числа
+--                            род.пад.мн.ч - форма родительного падежа множественного числа
+---
+-- Примеры:
+--   Util.SelectCountNounForm(1, 'рубль|рубля|рублей') => 'рубль'
+--   Util.SelectCountNounForm(2, 'рубль|рубля|рублей') => 'рубля'
+--   Util.SelectCountNounForm(5, 'рубль|рубля|рублей') => 'рублей'
+---------
+function SelectCountNounForm(aValue int, aCountNounForm varchar2) return varchar2;
+
+------------------------------------------------------------------------------------------
+-- FormatIntIntoPhrase - форматирует вариант фразы в зависимости от значения числа
+--    с заменой символа '^' значением числа
+---
+-- Входные параметры:
+--   aInt         - целое число
+--   aPhraseForms - формы фразы в виде
+--                    Util.TStrs('им.пад.ед.ч', 'род.пад.ед.ч', 'род.пад.мн.ч')
+--   Args         - дополнительные аргументы форматирования
+-- Примеры:
+--   Util.FormatIntIntoPhrase(5, Util.TStrs('рубль', 'рубля', 'рублей') => 'рублей'
+--   Util.FormatIntIntoPhrase
+--   ( 21
+--   , Util.TStrs('%sет %sён ^ тип %s', '%sут %sены ^ типа %s', '%sут %sены ^ типов %s')
+--   , Util.TStrs('Буд', 'удал', 'сообщений')
+--   ) => 'Будет удалён 21 тип сообщений'
+---------
+function FormatIntIntoPhrase(aInt int, aPhraseForms TStrs, Args TStrs := null) return varchar2;
+
+------------------------------------------------------------------------------------------
+-- SpelledInt - словесное представление целого числа
+---
+-- Входные параметры:
+--   aValue         - преобразуемое число
+--   aCountNounForm - формы исчисляемого существительного,
+--                      которое необходимо дописать к значению числа
+--                      описание формата см. Util.SelectCountNounForm.aCountNounForm
+--                      по умолчанию исчисляемое существительное не дописывается
+--   aGender        - род исчисляемого существительного
+--                      (для выбора форм числительных 'один' и 'два'):
+--                        'м' - мужской (по умолчанию)
+--                        'ж' - женский
+--                        'с' - средний
+--   aFirstUpper    - регистр первой буквы (по умолчанию с прописной буквы)
+---
+-- Примеры:
+--   S := Util.SpelledInt(765431);
+--   S := Util.SpelledInt(765431, 'рубль|рубля|рублей');
+--   S := Util.SpelledInt(765431, 'копейка|копейки|копеек', 'ж');
+--   S := Util.SpelledInt(765431, 'очко|очка|очков',        'с');
+---------
+function SpelledInt
+( aValue int,
+  aCountNounForm varchar2 := null,
+  aGender char := 'м',
+  aFirstUpper boolean := true
+) return varchar2;
+
+------------------------------------------------------------------------------------------
+-- NormalizeFIO и NormalizeAddress возвращают каноническое представление ФИО и адреса
+---------
+function NormalizeFIO(aSurname varchar2, aName varchar2, aPatronymic varchar2) return varchar2;
+---------
+function NormalizeAddress(
+  aRegion     varchar2 := null,
+  aDistrict   varchar2 := null,
+  aCityType   varchar2 := null,
+  aCity       varchar2 := null,
+  aStreetType varchar2 := null,
+  aStreet     varchar2 := null,
+  aHouse      varchar2 := null,
+  aBuilding   varchar2 := null,
+  aApartment  varchar2 := null
+) return varchar2;
+
+------------------------------------------------------------------------------------------
+-- ShortenFIO возвращают ФИО длиной не более заданной
+--   Для укорачивания минимально необходимое количество слов, разделённых пробелами,
+--    начиная с конца, заменяется на инициалы.
+--    Первое слово остаётся неизменным.
+--    Если после укорачивания ФИО превышает длину,
+--      то сперва пробелы, а затем и точки между инициалами удаляются,
+--      а результат при необходимости обрезается
+--    Если длина не задана, то возвращается первое слово с последующими инициалами.
+-- Пример разных вариантов усечения (по убыванию длины):
+--   Иванов Иван Иванович
+--   Иванов Иван И.
+--   Иванов И. И.
+--   Иванов И.И.
+--   Иванов И.И
+--   Иванов ИИ
+--   Иванов И
+--   Иванов
+---------
+function ShortenFIO(aFIO varchar2, aMaxLen int) return varchar2;
+
+------------------------------------------------------------------------------------------
+-- Translit - транслитерация текста
+---------
+function Translit(aValue varchar2) return varchar2;
+
+------------------------------------------------------------------------------------------
+-- HomographToLatin - Заменяет сходные по написанию кириллические буквы на латинские
+-- HomographToCyrillic - наоборот
+---------
+procedure HomographToLatin   (aValue in out nocopy varchar2);
+function  HomographToLatin   (aValue               varchar2) return varchar2;
+procedure HomographToCyrillic(aValue in out nocopy varchar2);
+function  HomographToCyrillic(aValue               varchar2) return varchar2;
+
+
+------------------------------------------------------------------------------------------
+-- IntToXxx/XxxToInt - преобразование из/в целое число по алфавиту
+--                       (в частном случае перевод из/в 10-чную систему счисления)
+---
+-- Алфавиты для Xxx:
+--   - Alphabet     - задаётся произвольный
+--   - AlphaNumeric - '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+--   - Alpha        - 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+-- Примеры:
+--   Util.IntToAlphabet(13,'01',8) => '00001101'
+--   Util.IntToAlphabet(13,'01234567') => '15'
+--   Util.AlphabetToInt('00001101','01') => 13
+---------
+function IntToAlphabet(aValue int, aAlphabet varchar2, aMinLength pls_integer := null) return varchar2;
+function AlphabetToInt(aValue varchar2, aAlphabet varchar2) return int;
+---------
+function IntToAlphaNumeric(aValue int, aMinLength pls_integer := null) return varchar2;
+function AlphaNumericToInt(aValue varchar2) return int;
+---------
+function IntToAlpha(aValue int, aMinLength pls_integer := null) return varchar2;
+function AlphaToInt(aValue varchar2) return int;
+
+------------------------------------------------------------------------------------------
+-- Работа с битовыми масками (до 61-го бита включительно на 10g)
+---
+-- Процедуры могут принимать NULL в качестве первого параметра, интерпретируя его как 0
+---------
+function  BitAnd       (aValue1               int, aValue2 int  ) return int;
+procedure BitAnd       (aValue1 in out nocopy int, aValue2 int  );
+--
+function  BitOr        (aValue1               int, aValue2 int  ) return int;
+procedure BitOr        (aValue1 in out nocopy int, aValue2 int  );
+--
+function  BitXor       (aValue1               int, aValue2 int  ) return int;
+procedure BitXor       (aValue1 in out nocopy int, aValue2 int  );
+--
+function  BitClear     (aValue                int, aBits   int  ) return int;
+procedure BitClear     (aValue  in out nocopy int, aBits   int  );
+--
+function  BitSetOrClear(aValue                int, aBits   int, aIsSet boolean) return int;
+procedure BitSetOrClear(aValue  in out nocopy int, aBits   int, aIsSet boolean);
+--
+function  BitReverse   (aValue                int, aBitCount int) return int;
+procedure BitReverse   (aValue  in out nocopy int, aBitCount int);
+--
+function IsBitSet   (aValue1 int, aValue2 int) return boolean; -- хотя бы один бит совпадает
+function IsBitNotSet(aValue1 int, aValue2 int) return boolean; -- ни один бит не совпадает
+function IsBitSetN  (aValue  int, aBitNo  int) return int;     -- aBitNo - номер бита начиная с 1
+---------
+function Bool2Bit(aBoolean boolean, aBits int := 1) return int; -- aBoolean -> aBits / 0 / null
+
+------------------------------------------------------------------------------------------
+-- RaiseErr - воздвигает eStandardException с форматированным текстом
+-- CheckErr - воздвигает eStandardException с форматированным текстом по условию
+---
+-- Параметры:
+--   ErrCondition - условие воздвижения ошибки
+--   ErrText      - текст ошибки
+--   Args         - аргументы форматирования
+--   aErrorClass  - если [-20999..-20001], то воздвигает именно эту ошибку вместо eStandardException,
+--                    в остальных случаях - класс ошибки, который можно получить при помощи NormalizeSqlErrMGetErrorClass
+--   aKeepErrorStack - сохранять ли стек ошибок (:= да)
+--
+-- Пример:
+--   Util.RaiseErr('Сообщение N %d уже обработано', Util.TStrs(MessageId));
+--   Util.CheckErr(ExistsMsg = 0, 'Сообщение N %d уже обработано', Util.TStrs(MessageId));
+---------
+procedure RaiseErr(ErrText varchar2, Args TStrs := null, aErrorClass pls_integer := null, aKeepErrorStack boolean := false);
+procedure RaiseErr(ErrText varchar2,
+  S1 varchar2      , S2 varchar2 := '', S3 varchar2 := '', S4 varchar2 := '',
+  S5 varchar2 := '', S6 varchar2 := '', S7 varchar2 := '',
+  S8 varchar2 := '', S9 varchar2 := '', S10 varchar2 := ''
+);
+function RaiseErr
+( ErrText varchar2,
+  S1 varchar2      , S2 varchar2 := '', S3 varchar2 := '', S4 varchar2 := '',
+  S5 varchar2 := '', S6 varchar2 := '', S7 varchar2 := '',
+  S8 varchar2 := '', S9 varchar2 := '', S10 varchar2 := ''
+) return varchar2;
+---------
+procedure CheckErr(ErrCondition boolean, ErrText varchar2, Args TStrs := null, aErrorClass pls_integer := null);
+procedure CheckErr(ErrCondition boolean, ErrText varchar2,
+  S1 varchar2      , S2 varchar2 := '', S3 varchar2 := '', S4 varchar2 := '',
+  S5 varchar2 := '', S6 varchar2 := '', S7 varchar2 := '',
+  S8 varchar2 := '', S9 varchar2 := '', S10 varchar2 := ''
+);
+
+------------------------------------------------------------------------------------------
+-- CheckErrText - воздвигает ошибку с текстом ошибки при его наличии
+---------
+procedure CheckErrText(aErrText varchar2, aErrorClass pls_integer := null);
+
+------------------------------------------------------------------------------------------
+-- Abort/AbortIf - воздвигает ошибку с ERROR_CLASS_ABORT
+---------
+procedure Abort(aMessage varchar2 := '');
+procedure AbortIf(aAbortCondition boolean, aMessage varchar2 := '');
+
+
+------------------------------------------------------------------------------------------
+-- NormalizeSqlErrM - возвращает текст первой ошибки
+---
+-- aMaxErrLen - максимальная длина текста
+-- aShortTextForSystemError - возвращать ошибки (не из диапазона -20999..-20000) в виде кода
+--   без расшифровки
+-- aErrorClass - класс ошибки
+---------
+function NormalizeSqlErrMGetErrorClass
+( aErrorClass              out pls_integer
+, aMaxErrLen                   pls_integer := null
+, aShortTextForSystemError     boolean := false
+) return varchar2;
+---------
+function NormalizeSqlErrM
+( aMaxErrLen                   pls_integer := null
+, aShortTextForSystemError     boolean := false
+) return varchar2;
+---------
+function GetErrorClass return pls_integer;
+
+------------------------------------------------------------------------------------------
+-- ConstraintName - возвращает имя ограничения целостности из текста ошибки
+---------
+function ConstraintName return varchar2;
+
+------------------------------------------------------------------------------------------
+-- GCD - (G)reatest (C)ommon (D)ivisor - НОД - Наибольший общий делитель
+---------
+function GCD(aValue1 number, aValue2 number) return number;
+
+------------------------------------------------------------------------------------------
+-- LCM - (L)east (C)ommon (M)ultiple - НОК - Наименьшее общее кратное
+---------
+function LCM(aValue1 number, aValue2 number) return number;
+
+------------------------------------------------------------------------------------------
+-- RoundSignificantDigits - Округление числа до указанного количества значащих цифр
+---------
+function RoundSignificantDigits(aValue number, aSignificantDigits pls_integer) return number;
+
+
+------------------------------------------------------------------------------------------
+-- Проверка e-mail адреса на корректность
+---------
+function IsValidEMailAddress(aAddr varchar2) return boolean;
+procedure CheckEMailAddress(aAddr varchar2);
+
+
+------------------------------------------------------------------------------------------
+-- MaskValue - Маскирование значения
+---
+-- Входные параметры:
+--   aValue            - исходное значение
+--   aMaskingAlgorithm - алгоритм маскирования - список длин частей исходной строки,
+--                         разделённых вертикальной чертой,
+--                         Нечётные (1-я, 3-я и т.д.) части возвращаются без изменений.
+--                         На месте чётных выводится соответствующее количество
+--                           символов-заменителей.
+--                         Одна из длин может отсутствовать, обозначая часть переменной длины.
+--                           Её длина будет определена как разность длин исходного значения
+--                             и длин остальных частей
+--   aMaskChar         - символ-заменитель.
+--                         Может быть пустым, тогда маскируемые части будут просто удалены
+---
+-- Примеры:
+--   MaskValue('1234567890123456789', '6||4') ='123456*********6789'
+--   MaskValue('1234567890123456',    '6||4') ='123456******3456'
+--   MaskValue('1234567890123456',    '0||4') ='************3456'
+--   MaskValue('1234567890123456',    '6|'  ) ='123456**********'
+--   MaskValue('1234567890123456',    '6'   ) ='123456'
+--   MaskValue('1234567890123456',    ''    ) =''
+--   MaskValue('1234567890123456',    '|'   ) ='1234567890123456'
+--   MaskValue('1234567890123456',    '0|'  ) ='****************'
+---------
+function MaskValue(aValue varchar2, aMaskingAlgorithm varchar2, aMaskChar varchar2 := '*') return varchar2;
+
+
+------------------------------------------------------------------------------------------
+-- Pivot - генерация диапазона чисел в запросе
+---
+-- Пример:
+--   select column_value as rn from table(Util.Pivot(:Cnt))
+--------
+function Pivot(aTo int, aFrom int := 1) return tp_int_table pipelined;
+
+------------------------------------------------------------------------------------------
+-- ListAgg - эмуляция ListAgg (из 11g) в 10g
+---
+-- Пример:
+--     Util.ListAgg(cast(collect(path order by path) as tp_varchar2_4000_table), ', ') as paths --10g
+--   вместо
+--     listagg(path, ', ') within group (order by path) as paths                                --11g
+---------
+function ListAgg(aTable tp_varchar2_4000_table, aSeparator varchar2 := '|') return varchar2;
+
+------------------------------------------------------------------------------------------
+-- Расчёт контрольной цифры номера пластиковой карточки в соответствии со стандартом ISO/IEC 7812
+---------
+function GetLuhnDigit(aCardNo varchar2) return int;
+
+------------------------------------------------------------------------------------------
+-- Dos2Date/Date2Dos - Преобразование MS DOS Date Time Format
+---
+--  Двухбайтовая отметка даты имеет следующий формат:
+--   биты 0-4 — день месяца, допускаются значения 1-31;
+--   биты 5-8 — месяц года, допускаются значения 1-12;
+--   биты 9-15 — год, считая от 1980 года («эпоха MS-DOS»),
+--               возможны значения от 0 до 127 включительно, то есть 1980—2107 годы.
+-- Два байта, отвечающие отметке времени, распределяются так:
+--   биты 0-4 — счётчик секунд (по две), допустимы значения 0-29, то есть 0-58 секунд;
+--   биты 5-10 — минуты, допустимы значения 0-59;
+--   биты 11-15 — часы, допустимы значения 0-23.
+---------
+procedure Dos2Date(aDosDate int, aDosTime int, aDate out date);
+function  Dos2Date(aDosDate int, aDosTime int) return date;
+procedure Date2Dos(aDate date, aDosDate out int, aDosTime out int);
+
+------------------------------------------------------------------------------------------
+-- Преобразование Unix Timestamp
+--   (количество секунд, прошедших с полуночи (00:00:00 UTC) 1 января 1970 года)
+---------
+function Unix2Date(aUnixTimestamp int, aNoUTC boolean := false) return date;
+function Date2Unix(aDate date,         aNoUTC boolean := false) return int;
+
+------------------------------------------------------------------------------------------
+-- Dos2Date/Date2Dos - Преобразование TDateTime Delphi
+---
+-- Нулевому значению даты в Delphi соответствует 30.12.1899 г. 00 ч. 00 м. 00 с. 000 мс.
+---------
+function Delphi2Date(aDate number) return date;
+function Date2Delphi(aDate date) return number;
+
+------------------------------------------------------------------------------------------
+-- CS/CN - constant value getters for SQL.
+---------
+function CS(aConstantName varchar2) return varchar2  result_cache;
+function CN(aConstantName varchar2) return number /* result_cache indirectly */;
+
+------------------------------------------------------------------------------------------
+-- Color возвращает значение цвета (HEX: BBGGRR) по его названию.
+---
+-- Поддерживаются цвета:
+--   Black   BlackLight=GrayDark
+--   Gray    GrayLight
+--   Maroon  MaroonLight
+--   Red     RedLight
+--   Brown   BrownLight
+--   Orange  OrangeLight
+--   Olive   OliveLight
+--   Yellow  YellowLight
+--   Green   GreenLight
+--   Lime    LimeLight
+--   Teal    TealLight
+--   Cyan    CyanLight
+--   Navy    NavyLight
+--   Blue    BlueLight
+--   Purple  PurpleLight
+--   Magenta MagentaLight
+-----------
+function Color(aColorName varchar2) return varchar2 result_cache;
+
+
+/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+/*!! Устаревшие                                                                       !!*/
+/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+
+StandardException               exception; pragma exception_init(StandardException,            -20000);
+
+---------
+end Util;
+/
+show err

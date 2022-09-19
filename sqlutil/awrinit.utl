@@ -1,0 +1,4 @@
+set echo on
+exec dbms_workload_repository.modify_baseline_window_size(2)
+exec dbms_workload_repository.modify_snapshot_settings(interval=>3*60, retention=>3*60*24, topnsql=>50)
+set echo off

@@ -1,0 +1,83 @@
+-- Resize each logfile
+
+prompt
+
+select* from v$log;
+select* from v$logfile;
+
+accept LogSize number prompt "Redo Log File Size (Mb): "
+
+var LogSize number
+exec :LogSize := &LogSize
+
+set serveroutput on size 20480
+set verify off
+set feedback off
+
+
+declare
+  LogSize constant int := :LogSize*1024*1024;
+  --
+  procedure Log(Msg varchar2)
+  is
+  begin
+    dbms_output.put_line(to_char(sysdate, 'hh24:mi:ss') || ': ' || Msg);
+  end Log;
+  --
+  procedure Parse(aStatement varchar2)
+  is
+  begin
+    Log(aStatement);
+    execute immediate aStatement;
+  end Parse;
+  --
+  procedure DropLog(aLogGroup# int)
+  is
+    fWaits int := 0;
+  begin
+    for cLog in (select * from v$log where group# = aLogGroup#) loop
+      <<Wait>>
+      loop
+        for cWaitedLog in (select status from v$log where group# = aLogGroup#) loop
+          exit Wait when cWaitedLog.status in ('INACTIVE', 'UNUSED');
+          if mod(fWaits, 10) = 0 and cWaitedLog.status = 'CURRENT' then
+            Parse('alter system switch logfile');
+          end if;
+          dbms_lock.sleep(0.1);
+          fWaits := fWaits + 1;
+          exit;
+        end loop;
+      end loop Wait;
+      Parse('alter database drop logfile group ' || aLogGroup#);
+    end loop;
+  end DropLog;
+  --
+  procedure ResizeLog(aLogGroup# int)
+  is
+    aLogFilename varchar2(4000);
+  begin
+    for cFile in (select member name from v$logfile where group# = aLogGroup#) loop
+      aLogFilename := aLogFilename || ',''' ||cFile.name || '''';
+    end loop;
+    aLogFilename := ltrim(aLogFilename, ',');
+    DropLog(aLogGroup#);
+    Parse('alter database add logfile group '||aLogGroup#||' ('||aLogFilename||') size '||LogSize||' reuse');
+  end ResizeLog;
+  --
+begin
+  Log('-=> ...');
+
+  for x in (select group# from v$log where bytes <> LogSize) loop
+    ResizeLog(x.group#);
+  end loop;
+
+  Log('<=-  completed.');
+end;
+/
+
+set feed on
+
+select* from v$log;
+select* from v$logfile;
+
+prompt

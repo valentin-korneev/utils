@@ -1,0 +1,8 @@
+begin
+  RefParam.CreateParamAsBoolean('C5641E9D7EA380CF805C4E4FD5376AD7',
+    'DEV_DB', 'Флаг БД разработчика', true,
+    'Параметр должен устанавливаться только у разработчиков БиСмарт',
+    aEditable=>false, aNullable=>false);
+  commit;
+end;
+/

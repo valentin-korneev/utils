@@ -1,0 +1,38 @@
+prompt create or replace package SMS_Core
+
+create or replace package SMS_Core
+as
+
+OPT_HIDE_MESSAGE_TEXT           constant int := 2**(1-1); -- = SMS_Gate.OPT_HIDE_MESSAGE_TEXT
+
+SYS_PRM_FIREBASE_ACTIVE         constant varchar2(30) := 'FirebaseActive';
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+---------
+function RegisterMessage
+( aSenderMnemonic         varchar2
+, aMessage                varchar2
+, aPhone                  int
+, aDocType                int := null
+, aDocId                  int := null
+, aOpt                    int := null
+, aTerminal               varchar2 := null
+, aClientId               int := null
+, aMessengerParamsId      int := null
+, aTimeout                int := null
+, aAutonomousTransaction  boolean := false
+) return int;
+---------
+procedure SendSMS(aSmsId int, aNoRepeat boolean := false);
+---------
+function Enabled(aSenderMnemonic varchar2) return boolean;
+---------
+function IsPhoneValidForSender(aSenderMnemonic varchar2, aPhone int) return boolean;
+---------
+procedure SendFirebasePUSH(aDeviceId varchar2, aMessage varchar2, aNewsId int := null, aMailId int := null);
+
+---------
+end SMS_Core;
+/
+show errors;

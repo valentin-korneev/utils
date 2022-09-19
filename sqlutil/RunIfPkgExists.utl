@@ -1,0 +1,10 @@
+
+set feed off
+set termout off
+undef FileToRun
+col fil new_value FileToRun
+select '&1' fil from user_objects where object_type='PACKAGE' and object_name=upper(regexp_replace('&1', '^@([^\.]+).*$', '\1'));
+set feed on
+set termout on
+
+@&FileToRun

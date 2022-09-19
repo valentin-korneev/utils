@@ -1,0 +1,18 @@
+
+BEGIN
+  dbms_auto_task_admin.disable(
+    client_name => 'sql tuning advisor',
+    operation   => NULL,
+    window_name => NULL);
+END;
+/
+
+BEGIN
+ dbms_auto_task_admin.disable(
+  client_name => 'auto space advisor',
+  operation  => NULL,
+  window_name => NULL);
+END;
+/
+
+select operation_name, status from dba_autotask_operation;

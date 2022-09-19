@@ -1,0 +1,11 @@
+
+prompt create table util_ip_location
+
+create table util_ip_location
+( id                            number(10) not null                             -- Идентификатор области
+                                  constraint util_ip_location$pk$id primary key
+, country                       varchar2(2)
+, city                          varchar2(50)
+)
+pctfree 0
+;

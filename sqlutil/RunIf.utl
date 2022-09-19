@@ -1,0 +1,16 @@
+--------------------------------------------------
+-- RunIf.utl
+---
+-- Run script &1 if 'select * from &2' returns any rows
+--   else do nothing
+--------------------------------------------------
+
+set feed off
+set termout off
+undef FileToRun
+col fil new_value FileToRun
+select '&1' fil from &2;
+set feed on
+set termout on
+
+@&FileToRun

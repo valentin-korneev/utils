@@ -1,0 +1,68 @@
+prompt create or replace package Util_IP
+
+create or replace package Util_IP
+as
+
+
+---
+-- ѕроверка на валидность сети и маски сети в dot-decimal системе (вида 156.178.123.140
+function IsValidIpAddress(aIpAddress varchar2) return boolean;
+
+---
+-- ѕроверка на валидность сети и маски сети в dot-decimal системе (вида 156.178.123.140
+--
+-- ¬ случае, если адрес не €вл€етс€ валидным - воздвигаетс€ Util.eStandardException
+procedure CheckIpAddress(aIpAddress varchar2);
+
+---
+-- ѕреобразование IP-адреса из дес€тичной формы  (вида 2628942732) в dot-decimal форму (вида 156.178.123.140)
+function IntToStr(aIpAddress int) return varchar2;
+
+---
+-- ѕреобразование IP-адреса doc-decimal (вида 156.178.123.140) в дес€тичную форму (вида 2628942732)
+function StrToInt(aIpAddress varchar2) return int;
+
+---
+-- ѕроверка, попадает ли IP-адрес aIpAddress в сеть aNetmask с маской aNetmask.
+-- ¬се значени€ - в дес€тичной форме (см. StrToInt)
+function ValidateIp(aIpAddress int, aNetwork int, aNetmask int) return boolean;
+
+---
+-- ѕреобразование сети и маски сети из dot-decimal формы (вида 156.178.123.140
+-- или 156.178.123.140/24, где 24 - маска подсети в формате CIDR) в дес€тичную форму.
+procedure ParseNetwork(aNetwork varchar2, aIpAddress out int, aNetmask out int);
+
+---
+-- ѕолучить страну по ip-адресу
+function GetCountry(aIpAddress varchar2) return varchar2;
+
+---
+-- ѕолучить город по ip-адресу
+function GetCity(aIpAddress varchar2) return varchar2;
+
+---
+-- ѕолучить страну и город по ip-адресу
+procedure GetCountryAndCity(aIpAddress varchar2, aCountry out varchar2, aCity out varchar2);
+
+------------------------------------------------------------------------------------------
+-- јдрес клиента при обращении через mod_plsql
+---------
+function GetOwaIpAddress(aOnlyFirst boolean := false) return varchar2;
+
+---
+-- IDN
+function Ascii2Domain(aDomain varchar2) return varchar2;
+function Domain2Ascii(aDomain varchar2) return varchar2;
+
+
+------------------------------------------------------------------------------------------
+-- –азложение адреса в формате хост[:порт] на составл€ющие
+---------
+procedure    ParseHostAndPort(aHostAndPort varchar2, aHost out varchar2, aPort out int, aDefaultPort int := null);
+procedure ValidateHostAndPort(aHostAndPort varchar2                                   , aDefaultPort int := null);
+function   IsValidHostAndPort(aHostAndPort varchar2                                   , aDefaultPort int := null) return boolean;
+
+
+---------
+end Util_IP;
+/

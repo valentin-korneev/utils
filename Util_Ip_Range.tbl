@@ -1,0 +1,22 @@
+
+prompt create table util_ip_range
+
+create table util_ip_range --! IP-адреса группами
+( network_class                       number(1)    not null       -- Условный класс сети( 0 : 256 адресов, 1 : 256^2, 2 : 256^3, 3 : 256^4) 
+                                        constraint util_ip_range$chk$network check (network_class between 0 and 3)
+, first_ip_int                        number(10)   not null -- Начало группы ip-адресов принадлежащих 1ой группе
+, first_ip                            varchar2(15) not null           -- Символьный формат
+, last_ip_int                         number(10)   not null                -- Конец группы
+, last_ip                             varchar2(15) not null           -- Символьный формат
+, location_id                         number(10)   not null       -- Учётный номер области
+, constraint util_ip_range$chk$first$last check (first_ip_int <= last_ip_int)
+, constraint util_ip_range$pk$net$first$l primary key(network_class, first_ip_int, last_ip_int)
+)
+pctfree 0
+;
+set echo on
+
+create index util_ip_range$i$first_ip     on util_ip_range(first_ip);
+create index util_ip_range$i$location_id  on util_ip_range(location_id) compress 1;
+
+set echo off

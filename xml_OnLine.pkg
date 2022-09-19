@@ -1,0 +1,47 @@
+prompt create or replace package xml_OnLine
+
+create or replace package xml_OnLine
+as
+
+PRM_ACCESS_IS_DENIED            constant varchar2(30)   := 'XML_ONLINE: ACCESS_IS_DENIED';
+CR_ACCESS_IS_DENIED             constant varchar2(100)  := 'Online-запросы: причина запрета';
+PRM_OPER_HISTORY_AS_SEARCH      constant varchar2(30)   := 'XML: OperHistory as Search';
+
+PRM$ACCESS_CTR_ALLOW_ORIGIN     constant varchar2(30)   := 'XML:AccessControlAllowOrigin';
+
+ERROR_CLASS$J$ERR_DEFAULT       constant int := 1000;
+ERROR_CLASS$J$ERR_LAST          constant int := 1299;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+procedure WorkaroundForModPlSqlBug(Pn1$ varchar2, Pn2$ varchar2);
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure Request(XML clob);
+function  Request(XML clob) return clob;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure Admin(XML clob);
+function  Admin(XML clob) return clob;
+procedure AdminJson(aData clob, aEncrypted boolean := false);
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-- Lookup
+
+function Subsystems return Util.RefCursor;
+function Extensions(aSubsystem varchar2 := null) return Util.RefCursor;
+function Requests  (aSubsystem varchar2 := null, aExtension varchar2 := null) return Util.RefCursor;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+procedure ToForm(name_array in owa.vc_arr, value_array in owa.vc_arr);
+procedure ProcessRedirect(name_array in owa.vc_arr, value_array in owa.vc_arr);
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+procedure DownloadFile(file varchar2 := null);
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+end xml_OnLine;
+/
+show err

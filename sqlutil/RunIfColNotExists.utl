@@ -1,0 +1,15 @@
+--------------------------------------------------
+-- RunIfColNotExists.utl
+---
+-- Run script &1 if column &3 in table &2 not exist
+--   else do nothing
+--------------------------------------------------
+set feed off
+set termout off
+undef FileToRun
+col fil new_value FileToRun
+select '&1' fil from user_tab_columns where table_name=upper('&2') and column_name=upper('&3') having count(*)=0;
+set feed on
+set termout on
+
+@&FileToRun

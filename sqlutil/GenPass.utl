@@ -1,0 +1,15 @@
+prompt
+accept cnt number prompt "Number of passwords: "
+prompt
+
+begin
+  for i in 1..&cnt loop
+    dbms_output.put(lower(dbms_random.string('l', 1) || dbms_random.string('x', 7)) || ' ');
+    if mod(i, 6) = 0 then
+      dbms_output.new_line;
+    end if;
+  end loop;
+  dbms_output.new_line;
+end;
+/
+prompt

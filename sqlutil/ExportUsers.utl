@@ -1,0 +1,52 @@
+set timing off
+set feed off
+exec dbms_metadata.set_transform_param(dbms_metadata.session_transform,'SQLTERMINATOR', true);
+
+set long 1000000
+set longchunksize 1000000
+set pagesize 0
+set recsep off
+
+
+select ltrim(rtrim(
+    replace
+    ( replace
+      ( sql
+      , chr(10) || '  '
+      )
+    , chr(10) || ' '
+    , chr(10)
+    ), chr(10)||' '), chr(10)||' ')
+  from
+  ( select u.username, 1 as ind,
+           dbms_metadata.get_ddl('USER', u.username)
+        || chr(10)||dbms_metadata.get_granted_ddl('SYSTEM_GRANT', u.username)
+        || case when is_standard is not null and exists (select null from dba_tab_privs p where p.grantee = u.username) then
+           chr(10)||dbms_metadata.get_granted_ddl('OBJECT_GRANT', u.username)
+           end
+        as sql
+      from adm_operator o, all_users u
+      where o.username <> user
+        and u.username = o.username
+    union all
+    select owner, 2,
+           dbms_metadata.get_ddl('SYNONYM', synonym_name, owner) as sql
+      from dba_synonyms
+      where owner in (select username from adm_operator where username <> user and is_standard is not null)
+    union all
+    select null, 1,
+           dbms_metadata.get_ddl('PROFILE', SYS_PROFILE) as sql
+      from adm_profile
+      where id is not null
+    union all
+    select null, 2,
+           dbms_metadata.get_ddl('ROLE', role) as sql
+      from dba_roles 
+      where role like user||'%'
+  ) s
+  order by (select uu.created from all_users uu where uu.username = s.username) nulls first, s.username, s.ind
+;
+
+
+select replace(replace(dbms_metadata.get_granted_ddl('SYSTEM_GRANT', user), chr(10)||'  '), chr(10)||' ', chr(10)) from dual
+

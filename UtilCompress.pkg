@@ -1,0 +1,15 @@
+prompt create or replace package UtilCompress
+
+create or replace package UtilCompress
+as
+type TFile is record 
+  ( filename varchar2(200)
+  , content  blob := empty_blob()
+  );
+---------
+-- https://en.wikipedia.org/wiki/Zip_(file_format)
+procedure Unzip(aCompressedFile TFile, aDecompressedFile out TFile);
+---------
+end UtilCompress;
+/
+show err

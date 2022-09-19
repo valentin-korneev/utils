@@ -1,0 +1,188 @@
+
+prompt create or replace package UtilSql
+
+create or replace package UtilSql authid current_user
+as
+
+---------
+procedure OutLines(S clob, aMaxLines int := 1000);
+
+---------
+function Execute
+( aSrc          varchar2
+, aSubsrc       varchar2
+, aStatement    clob
+, aParams       Util.TStrs := null
+, aIgnoreErrors Util.TInts := null
+, aMaxLines     int        := 1000
+, aSerialize    boolean    := false
+, aMacros       Util.TStrs := null
+, aAsJob        boolean    := false
+, aJobStartDate date       := null
+, aBinds        Util.TStrs := null
+, aAutonomousTransaction       boolean := false
+) return boolean;
+---------
+procedure Execute
+( aSrc          varchar2
+, aSubsrc       varchar2
+, aStatement    clob
+, aParams       Util.TStrs := null
+, aIgnoreErrors Util.TInts := null
+, aMaxLines     int        := 1000
+, aSerialize    boolean    := false
+, aMacros       Util.TStrs := null
+, aAsJob        boolean    := false
+, aJobStartDate date       := null
+, aBinds        Util.TStrs := null
+, aIterateDmlTill0RowsAffected boolean := false
+, aAutonomousTransaction       boolean := false
+);
+
+---------
+function Execute
+( aStatement    clob
+, aParams       Util.TStrs := null
+, aIgnoreErrors Util.TInts := null
+, aMaxLines     int        := 1000
+, aMacros       Util.TStrs := null
+, aBinds        Util.TStrs := null
+, aAutonomousTransaction       boolean := false
+) return boolean;
+---------
+procedure Execute
+( aStatement    clob
+, aParams       Util.TStrs := null
+, aIgnoreErrors Util.TInts := null
+, aMaxLines     int        := 1000
+, aMacros       Util.TStrs := null
+, aBinds        Util.TStrs := null
+, aAutonomousTransaction       boolean := false
+);
+
+---------
+procedure Execute
+( aSrc          varchar2
+, aSubsrc       varchar2
+, aStatements   Util.TStrs
+, aIgnoreErrors Util.TInts := null
+, aMaxLines     int        := 1000
+, aMacros       Util.TStrs := null
+, aSerialize    boolean    := false
+, aAsJob        boolean    := false
+, aJobStartDate date       := null
+, aIterateDmlTill0RowsAffected boolean := false
+);
+---------
+procedure Execute
+( aStatements   Util.TStrs
+, aIgnoreErrors Util.TInts := null
+, aMaxLines     int        := 1000
+, aMacros       Util.TStrs := null
+);
+
+---------
+procedure ParseQuery
+( aQuery        varchar2
+, aParams       Util.TStrs := null
+, aMaxLines     int        := -100
+, aMacros       Util.TStrs := null
+);
+---------
+function ExecuteQuery
+( aSrc          varchar2
+, aSubsrc       varchar2
+, aQuery        varchar2
+, aParams       Util.TStrs := null
+, aMacros       Util.TStrs := null
+, aBinds        Util.TStrs := null
+, aExactFetch   boolean    := true
+) return Util.TStrs;
+---------
+function ExecuteQuery
+( aQuery        varchar2
+, aParams       Util.TStrs := null
+, aMacros       Util.TStrs := null
+, aBinds        Util.TStrs := null
+, aExactFetch   boolean    := true
+) return Util.TStrs;
+
+---------
+procedure DropDependentTypes(aType varchar2);
+
+
+---------
+procedure ExecuteAsJob
+( aSrc          varchar2
+, aSubsrc       varchar2
+, aStatement    varchar2
+, aJobLabel     varchar2 := null
+, aJobStartDate date     := null
+);
+---------
+procedure RunJob
+( aJobLabel         varchar2
+, aJobBody          varchar2
+, aJobStartDate     date := null
+);
+---------
+procedure ActivateJob
+( aExecProc               varchar2
+, aPeriod                 varchar2 := 'sysdate+1'
+, aAutonomousTransaction  boolean  := true
+, aSilently               boolean  := false
+);
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+---------
+function GetProcedures
+( aProcName           varchar2
+, aAllowOrdinality    boolean  := false
+, aDefaultOrder       int      := null
+, aExcludedPackagesRE varchar2 := null
+) return Util.TStrs;
+
+---------
+function GetColumns
+( aTable            varchar2
+, aIncludedColumns  Util.TStrs := null
+, aExcludedColumns  Util.TStrs := null
+) return Util.TStrs;
+
+
+---------
+function Trg_GetColumnsUnchanged
+( aTable            varchar2
+, aIncludedColumns  Util.TStrs := null
+, aExcludedColumns  Util.TStrs := null
+) return varchar2;
+
+---------
+function Trg_GetColumnsChangedList
+( aTable            varchar2
+, aIncludedColumns  Util.TStrs := null
+, aExcludedColumns  Util.TStrs := null
+) return varchar2;
+
+---------
+function GetColumnDataType(aTableName varchar2, aColumnName varchar2) return varchar2;
+
+---------
+type TColumnRec is record ( table_name varchar2(30)
+                          , column_name varchar2(30)
+                          );
+type TColumnList    is table of TColumnRec index by pls_integer;
+---------
+-- Процедура преобразования типов данных полей в таблицах
+--  aExpr - выражение для update, поддерживает макрос %column%
+--          Например:
+--            'to_char(%column%, ''yyyy.mm.dd'')'
+---------
+procedure AlterColumnsDataType(aColumnList TColumnList, aType varchar2, aExpr varchar2 := null, aDropFKCons boolean := false);
+
+---------
+end UtilSql;
+
+/
+show err

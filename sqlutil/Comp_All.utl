@@ -1,0 +1,134 @@
+
+set feed off
+exec dbms_session.reset_package
+set serveroutput on size unlimited
+set feed on
+
+set verify off
+set feedback off
+
+prompt
+prompt Compile all invalid objects ...
+prompt
+
+
+<<CompileAllInvalidObjects>>
+declare
+  sqlstmt varchar2(2000);
+  i int := 0;
+  fInvalidCnt int;
+
+  type TObj is record(object_type user_objects.object_type%type,  object_name user_objects.object_name%type);
+  type TObjs is table of TObj index by binary_integer;
+  Objs TObjs;
+  FindStarted int;
+  Time1 int := 0;
+  Time2 int := 0;
+  fLongOpId pls_integer := dbms_application_info.set_session_longops_nohint;
+  fLongOpData pls_integer;
+  --
+  procedure Log(Msg varchar2)
+  is
+  begin
+    dbms_output.put_line(to_char(systimestamp, 'hh24:mi:ss.ff3') || ': ' || Msg);
+  end Log;
+  --
+begin
+  Log('-=> Recompiling invalid objects ...');
+  loop
+    FindStarted := dbms_utility.get_time;
+    Objs.delete;
+    for Obj in
+    ( select *
+        from
+        ( select object_type, object_name
+            from user_objects
+            where status = 'INVALID'
+              and object_type in ('PACKAGE','PACKAGE BODY','VIEW','TRIGGER','PROCEDURE','FUNCTION','TYPE','TYPE BODY')
+              and object_name not like 'BIN$%$%'
+              and object_name not like 'SYSTP%=='
+          minus
+          select --+ no_merge
+              d.type, d.name
+            from user_dependencies d, user_objects o
+            where d.referenced_owner = user
+              and d.referenced_type in ('PACKAGE','PACKAGE BODY','VIEW','TRIGGER','PROCEDURE','FUNCTION','TYPE','TYPE BODY')
+              and o.object_type = d.referenced_type
+              and o.object_name = d.referenced_name
+              and o.status = 'INVALID'
+        )
+        order by dbms_random.value
+     ) loop
+      Objs(nvl(Objs.last, 0) + 1) := Obj;
+    end loop;
+
+    Log('Found portion of '||Objs.count||' invalid objects in '||(dbms_utility.get_time-FindStarted)/100||' sec.');
+    Time1 := Time1 + dbms_utility.get_time - FindStarted;
+    exit when Objs.count = 0;
+
+    for j in 1 .. Objs.last loop
+      if Objs(j).object_type in ('PACKAGE') then
+        sqlstmt:='alter PACKAGE "'||Objs(j).object_name||'" compile specification';
+      elsif Objs(j).object_type in ('PACKAGE BODY') then
+        sqlstmt:='alter PACKAGE "'||Objs(j).object_name||'" compile body';
+      elsif Objs(j).object_type in ('TYPE') then
+        sqlstmt:='alter TYPE "'||Objs(j).object_name||'" compile specification';
+      elsif Objs(j).object_type in ('TYPE BODY') then
+        sqlstmt:='alter TYPE "'||Objs(j).object_name||'" compile body';
+      else
+        sqlstmt:='alter '||Objs(j).object_type||' "'||Objs(j).object_name||'" compile';
+      end if;
+
+      Time2 := Time2 - dbms_utility.get_time;
+      select count(*) into fInvalidCnt from user_objects where status = 'INVALID';
+      Time2 := Time2 + dbms_utility.get_time;
+      i:=i+1;
+      dbms_application_info.set_session_longops
+      ( fLongOpId
+      , fLongOpData
+      , op_name=>'Compile invalid'
+      , sofar=>i
+      , totalwork=>fInvalidCnt + i - 1
+      , target_desc=>'user_objects'
+      , units=>'objects'
+      );
+      Log(to_char(i,'fm000')||'-'||to_char(fInvalidCnt,'fm000')||': '||sqlstmt);
+      declare
+        eSuccessWithCompilationError exception;
+        pragma exception_init(eSuccessWithCompilationError, -24344);
+      begin
+        execute immediate sqlstmt;
+      exception
+        when eSuccessWithCompilationError then
+          for Err in
+          ( select * from user_errors
+              where type = Objs(j).object_type
+                and name = Objs(j).object_name
+              order by sequence
+          ) loop
+            dbms_output.put_line(Err.line || '/' || Err.position || ': ' || Err.text);
+          end loop;
+          raise program_error;
+      end;
+    end loop;
+  end loop;
+
+  for Obj in
+  ( select object_type, object_name from user_objects
+      where status = 'INVALID'
+        and object_type in ('PACKAGE','PACKAGE BODY','VIEW','TRIGGER','PROCEDURE','FUNCTION','TYPE','TYPE BODY')
+        and object_name not like 'BIN$%$%'
+        and object_name not like 'SYSTP%=='
+  ) loop
+    raise_application_error(-20000, '<=- "'|| Obj.object_type ||' '|| Obj.object_name ||'" is still invalid !');
+  end loop;
+  Log('<=- Recompilation finished (ExtraTime='||Time1/100||'+'||Time2/100||'='||(Time1+Time2)/100||' sec).');
+end CompileAllInvalidObjects;
+/
+
+exec dbms_session.reset_package
+set serveroutput on size unlimited
+
+set feedback on
+
+prompt

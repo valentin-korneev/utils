@@ -1,0 +1,30 @@
+------------------------------------------------------------------------------------------
+-- 22.08.2007 11:33:28 Elic - created
+--------
+
+prompt create or replace package UtilLock
+
+create or replace package UtilLock
+is
+
+eTimedOut exception;
+
+---------
+function GetLockHandle(aLockName varchar2, aKey varchar2 := null) return varchar2;
+
+---------
+function GetLockName(aLockHandle varchar2) return varchar2;
+
+---------
+procedure Request(aLockHandle varchar2, aLockMode int := dbms_lock.x_mode, aTimeout int := dbms_lock.maxwait, aReleaseOnCommit boolean := true
+, aRaiseTimedOutException boolean := false
+);
+
+---------
+procedure Release(aLockHandle varchar2);
+
+
+---------
+end UtilLock;
+/
+show err

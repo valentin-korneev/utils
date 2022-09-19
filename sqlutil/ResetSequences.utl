@@ -1,0 +1,56 @@
+------------------------------------------------------------------------------------------
+-- Elic 26.06.2006 15:10:42 - created
+---
+-- ResetSequences.utl - сброс последовательностей в начальное значение.
+--   Вызов:
+--     @ResetSequences.utl <FilterType> <Filter>
+--       <FilterType> : '+' - включая только указанные в фильтре
+--                      '-' - все за исключением указанных в фильтре
+--       <Filter> : Фильтр - список последовательностей через запятую (без пробелов)
+---
+
+
+prompt
+
+declare
+  fMode char := '&1';
+  fSeqList varchar2(4000) := upper(',&2,');
+  fStmt varchar2(4000);
+  fBakSeq varchar2(30);
+  A int;
+  B int;
+  --
+  procedure Exec(aStatement varchar2)
+  is
+  begin
+    dbms_output.put_line(aStatement);
+    execute immediate aStatement;
+  end Exec;
+  --
+begin
+  for cSeq in
+  ( select * from user_sequences us
+      where sign(instr(fSeqList, ','||upper(sequence_name)||',')) = decode(fMode, '+', 1, '-', 0)
+        and sequence_name not like '%#$'
+      order by sequence_name
+  ) loop
+    dbms_output.put_line(lpad('-', 80, '-'));
+    fStmt := ltrim(rtrim(dbms_metadata.get_ddl('SEQUENCE', cSeq.sequence_name), chr(10)||' '), chr(10)||' ');
+    A := instr(fStmt, ' START WITH ');
+    B := instr(fStmt, ' ', A, 4);
+    fStmt := substr(fStmt, 1, A) || substr(fStmt, B);
+    fBakSeq := substr(cSeq.sequence_name, 1, 28) || '#$';
+    Exec('rename "'||cSeq.sequence_name||'" to "'||fBakSeq||'"');
+    Exec(fStmt);
+    for cPriv in
+    ( select 'grant '||privilege||' on "'||cSeq.sequence_name||'" to "'||
+          grantee||'"'||decode(grantable,'yes',' with grant option','') stmt
+        from user_tab_privs
+        where table_name in (fBakSeq, cSeq.sequence_name)
+    ) loop
+      Exec(cPriv.stmt);
+    end loop;
+    Exec('drop sequence "'||fBakSeq||'"');
+  end loop;
+end;
+/

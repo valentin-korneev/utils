@@ -1,0 +1,106 @@
+prompt create or replace package UtilLob
+
+create or replace package UtilLob
+is
+
+--------
+type TRawArr                    is table of raw(32767) index by pls_integer;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-- https://community.oracle.com/thread/1065137?start=15
+--------
+function  ZLibDecompress(aBlob blob) return blob;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-- https://erikwramner.wordpress.com/2010/02/23/coding-and-decoding-base64-in-plsql/
+--------
+function  Base64Encode(aBlob blob) return clob;
+function  Base64Decode(aClob clob) return blob;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-- Создание бинарного файла
+--------
+procedure WriteBlobInit(aCharSet varchar2 := null);
+--------
+procedure WriteBlobBlob   (aBlob blob     ,             aFrom int := null);
+procedure WriteBlobR      (aValue raw     ,             aFrom int := null);
+procedure WriteBlobI      (aValue int     , aBytes int, aFrom int := null, aSigned boolean := false);
+procedure WriteBlobF      (aValue number  ,             aFrom int := null);
+procedure WriteBlobD      (aValue number  ,             aFrom int := null);
+procedure WriteBlobS      (aValue varchar2, aBytes int, aFrom int := null, aCharSet varchar2 := null, aFillChar varchar2 := ' ');
+procedure WriteBlobDDos   (aValue date    ,             aFrom int := null);
+procedure WriteBlobDDelphi(aValue date);
+--------
+function  WriteBlobGet(aFlush boolean := true            ) return blob;
+function  WriteBlobGet(aFrom int        , aTo int := null) return blob;
+function  WriteBlobCRC(aFrom int := null, aTo int := null) return int;
+--------
+function  WriteBlobLength return int;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-- Преобразование
+--------
+procedure Clob2Blob(aClob clob, aBlob out nocopy blob, aCharSet varchar2 := 'CL8MSWIN1251');
+function  Clob2Blob(aClob clob,                        aCharSet varchar2 := 'CL8MSWIN1251') return blob;
+--------
+procedure Blob2Clob(aBlob blob, aClob out nocopy clob, aCharSet varchar2 := 'CL8MSWIN1251');
+function  Blob2Clob(aBlob blob,                        aCharSet varchar2 := 'CL8MSWIN1251') return clob;
+
+-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+-- Чтение бинарного файла
+--------
+procedure ReadBlobInit(aData blob, aCharSet varchar2 := null, aEndian int := utl_raw.little_endian);
+--------
+function  ReadBlobBlob   (aOffSet int, aBytes int                                                   ) return blob;
+function  ReadBlobR      (aOffSet int, aBytes int                                                   ) return raw;
+function  ReadBlobI      (aOffSet int, aBytes int, aSigned     boolean := false, aEndian int := null) return int;
+function  ReadBlobS      (aOffSet int, aBytes int, aCharSet    varchar2 := null                     ) return varchar2;
+function  ReadBlobD      (aOffSet int                                                               ) return number;
+function  ReadBlobDDos   (aOffSet int            , aZeroAsNull boolean := false                     ) return date;
+function  ReadBlobDDelphi(aOffSet int                                                               ) return date;
+function  ReadBlobRDelphi(aOffSet int                                                               ) return number;
+--------
+function  ReadBlobLength return int;
+--------
+function  ReadBlobCRC8 (aOffSet int, aBytes int, aPolynom int := 49,   aInitVector integer := 255  , aRefIn boolean := false                          ) return int;
+function  ReadBlobCRC16(aOffSet int, aBytes int, aPolynom int := 4129, aInitVector integer := 65535, aRefIn boolean := false, aRefOut boolean := false) return int;
+function  ReadBlobCRC32(aOffSet int, aBytes int,                       aInitVector integer := null , aWithoutEndXor boolean := false                  ) return int;
+
+--------
+procedure Blob2TRawArr(aBlob blob, aRawArr in out nocopy TRawArr);
+function Blob2TRawArr(aBlob blob) return TRawArr;
+procedure TRawArr2Blob(aRawArr TRawArr, aBlob in out nocopy blob);
+function TRawArr2Blob(aRawArr TRawArr) return blob;
+
+------------------------------------------------------------------------------------------
+-- DelphiReal2Number - Преобразование Borland Pascal 6-byte "real48"
+--  формат:
+--     b0      b1       b2       b3       b4       b5
+--  smmmmmm mmmmmmmm mmmmmmmm mmmmmmmm mmmmmmmm eeeeeeee
+--  , где s - знак, m - мантиса (3 бит), e - экспонента
+---------
+function DelphiReal2Number(aReal raw, aNeedReverse boolean := false) return number;
+
+------------------------------------------------------------------------------------------
+-- http://ru.wikibooks.org/wiki/Реализации_алгоритмов/Циклический_избыточный_код
+---
+-- aData          - данные
+-- aPolynom       - полином
+-- aInitVector    - вектор инициализации
+-- aRefIn         - флаг, указывающий на начало и направление вычислений:
+--                    false — начиная со старшего значащего бита (MSB-first)
+--                    true  — с младшего (LSB-first)
+-- aRefOut        - инвертируется ли порядок битов
+-- aWithoutEndXor - выполнять в конце xor результата и вектора инициализации
+---------
+function CRC8 (aData blob, aPolynom int := 49,   aInitVector integer := 255,   aRefIn boolean := false) return integer;
+function CRC16(aData blob, aPolynom int := 4129, aInitVector integer := 65535, aRefIn boolean := false, aRefOut boolean := false) return integer;
+---------
+function CRC32(aData blob, aInitVector integer := null, aWithoutEndXor boolean := false) return integer;
+
+
+
+--------
+end UtilLob;
+/
+show error
